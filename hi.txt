@@ -1,0 +1,39 @@
+
+> chatterbox@0.0.1 test /Users/student/2015-02-chatterbox-server
+> mocha server/spec
+
+Listening on http://127.0.0.1:3000
+
+[0m[0m
+[0m  server[0m
+Serving request type GET for url /classes/messages
+  [32m  ✓[0m[90m should respond to GET requests for /log with a 200 status code [0m
+Serving request type GET for url /classes/messages
+  [31m  1) should send back parsable stringified JSON[0m
+Serving request type GET for url /classes/messages
+  [31m  2) should send back an object[0m
+Serving request type GET for url /classes/messages
+  [31m  3) should send an object containing a `results` array[0m
+Serving request type POST for url /classes/messages
+  [31m  4) should accept POST requests to /send[0m
+Serving request type POST for url /classes/messages
+Serving request type GET for url /classes/messages
+  [31m  5) should respond with messages that were previously posted[0m
+Serving request type GET for url /arglebargle
+  [31m  6) Should 404 when asked for a nonexistent file[0m
+
+[0m  Node Server Request Listener Function[0m
+Serving request type GET for url /classes/room1
+  [32m  ✓[0m[90m Should answer GET requests for /classes/room with a 200 status code [0m
+Serving request type GET for url /classes/room1
+  [31m  7) Should send back parsable stringified JSON[0m
+  [36m  - Should send back an object[0m
+  [36m  - Should send an object containing a `results` array[0m
+  [36m  - Should accept posts to /classes/room[0m
+  [36m  - Should respond with messages that were previously posted[0m
+  [36m  - Should 404 when asked for a nonexistent file[0m
+
+
+[92m [0m[32m 2 passing[0m[90m (42ms)[0m
+[36m [0m[36m 5 pending[0m
+

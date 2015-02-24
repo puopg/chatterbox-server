@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>chatterbox</title>
+    <link rel="stylesheet" href="styles/styles.css">
+
+    <!-- dependencies -->
+    <script src="bower_components/jquery/jquery.min.js"></script>
+    <script src="bower_components/underscore/underscore-min.js"></script>
+    <script src="bower_components/backbone/backbone.js"></script>
+    <!-- your scripts -->
+    <script src="env/config.json"></script>
+    <script src="scripts/app.js"></script>
+  </head>
+  <body>
+    <div id="main">
+      <h1>chatterbox</h1>
+      <div class='spinner' ><img src='images/spiffygif_46x46.gif'></div>
+      <h3></h3>
+      <div id='roomChoiceBox' class='inputDiv'>
+        <h4>Select a Chatroom</h4>
+        <input id='roomChoiceText' type='text'></input>
+        <button id='roomChoiceButton'>Change Rooms</button>
+      </div>
+      <div id='sendMessageBox' class='inputDiv'>
+        <h4>Send a Message</h4>
+        Username<input id='sendMessageBoxUser' type='text'></input>
+        Message<input id='sendMessageBoxText' type='text'></input>
+      </div>
+      <button id='sendMessageButton'>Send message</button>
+      <!-- Your HTML goes here! -->
+      <div id='messageBox'>
+      </div>
+      <script>
+        // function to run backbone app
+        $(function() {
+          var messages = new Messages();
+          messages.loadMessages();
+          var formView = new FormView({el: $('#main'), collection: messages});
+          var messagesView = new MessagesView({el: $('#messageBox'), collection: messages});
+
+          setInterval(function(){
+            messages.loadMessages();
+          },5000);
+        });
+      </script>
+    </div>
+  </body>
+</html>

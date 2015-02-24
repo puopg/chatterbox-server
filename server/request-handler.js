@@ -11,26 +11,81 @@ this file and include it in basic-server.js so that it actually works.
 *Hint* Check out the node module documentation at http://nodejs.org/api/modules.html.
 
 **************************************************************/
+// List dependencies
+var url = require('url');
+var _ = require('underscore');
 
-var requestHandler = function(request, response) {
-  // Request and Response come from node's http module.
-  //
-  // They include information about both the incoming request, such as
-  // headers and URL, and about the outgoing response, such as its status
-  // and content.
-  //
-  // Documentation for both request and response can be found in the HTTP section at
-  // http://nodejs.org/documentation/api/
+// Global variables FTL
+var messages = {
+  results: []
+};
 
-  // Do some basic logging.
-  //
-  // Adding more logging to your server can be an easy way to get passive
-  // debugging help, but you should always be careful about leaving stray
-  // console.logs in your code.
+// Unique ID # of each message.
+var id = 0;
+
+exports.requestHandler = function(request, response) {
+
   console.log("Serving request type " + request.method + " for url " + request.url);
 
-  // The outgoing status.
-  var statusCode = 200;
+  // Default status code and return string
+  var statusCode = 404;
+  var retString = '';
+
+  // Parse the URL and get the roomname
+  var url_parts = url.parse(request.url, true);
+  var query = url_parts.query;
+
+  // Check if the url is valid, proceed if so
+  if(request.url.substr(0,8) === '/classes') {
+
+    //------- Begin POST request -------
+    if(request.method === 'POST'){
+      console.log("POST received.")
+      statusCode = 201;
+
+      // Assign a listener to handle POSTs asynchronously
+      // We need to assign all the properties of the message
+      // in here when we are adding it into our database
+      request.addListener('data', function(data){
+        var message = JSON.parse(data.toString('utf-8'));
+        if(query.where){
+         message.roomname = JSON.parse(query.where).roomname;
+        }
+        message.friend = false;
+        message.objectId = id;
+        messages.results.push(message);
+        id++;
+      });
+    } //------ End POST request --------
+
+    //------- Begin GET request --------
+    else if (request.method === 'GET') {
+      console.log("GET received.")
+      statusCode = 200;
+
+      // If the where property exists, filter by roomname
+      // TODO: Handle the case if 'roomname' is not given in where
+      if(query.where){
+        var filteredMessages = _.filter(messages.results, function(message){
+            var f = JSON.parse(query.where);
+            if(message.roomname === f.roomname) {
+              return true;
+            }
+            return false;
+        });
+        // Set the object to return as a new object with the filtered results
+        retString = JSON.stringify({results: filteredMessages});
+        console.log('retString: ' + retString);
+      }
+      else{
+        retString = JSON.stringify(messages);
+      }
+    } //------ End GET request --------
+    // Handle the OPTIONS case when backbone sends it
+    else if(request.method === 'OPTIONS'){
+      statusCode = 201;
+    }
+  }
 
   // See the note below about CORS headers.
   var headers = defaultCorsHeaders;
@@ -52,7 +107,8 @@ var requestHandler = function(request, response) {
   //
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
-  response.end("Hello, World!");
+
+  response.end(retString);
 };
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
