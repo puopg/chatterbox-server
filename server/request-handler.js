@@ -1,125 +1,130 @@
-/*************************************************************
-
-You should implement your request handler function in this file.
-
-requestHandler is already getting passed to http.createServer()
-in basic-server.js, but it won't work as is.
-
-You'll have to figure out a way to export this function from
-this file and include it in basic-server.js so that it actually works.
-
-*Hint* Check out the node module documentation at http://nodejs.org/api/modules.html.
-
-**************************************************************/
-// List dependencies
+//----- Dependencies -----
 var url = require('url');
 var _ = require('underscore');
+var fs = require('fs');
 
-// Global variables FTL
+
+//---- Global variables ----
 var messages = {
   results: []
 };
+var id = 0; // Unique ID of a message
 
-// Unique ID # of each message.
-var id = 0;
-
+/// Function requestHandler(request, response)
+/// request: A request message to handle
+/// response: A response message to send data back in
+/// This function will accept a request message to the server and handle it appropriately
+/// - GET :     If the message is a GET request, the server will determine if
+///             it needs to serve files for the client or simply return messages
+/// - POST:     If the message is a POST request, the server will add the message
+///             into its internal storage and assign a unique ID #.
+/// - OPTIONS:  If the message is an OPTIONS request, the server will just allow
+///             the message through and return a good response.
 exports.requestHandler = function(request, response) {
 
   console.log("Serving request type " + request.method + " for url " + request.url);
 
+  //----- Initialize Variables -----
   // Default status code and return string
   var statusCode = 404;
   var retString = '';
-
-  // Parse the URL and get the roomname
-  var url_parts = url.parse(request.url, true);
-  var query = url_parts.query;
-
-  // Check if the url is valid, proceed if so
-  if(request.url.substr(0,8) === '/classes') {
-
-    //------- Begin POST request -------
-    if(request.method === 'POST'){
-      console.log("POST received.")
-      statusCode = 201;
-
-      // Assign a listener to handle POSTs asynchronously
-      // We need to assign all the properties of the message
-      // in here when we are adding it into our database
-      request.addListener('data', function(data){
-        var message = JSON.parse(data.toString('utf-8'));
-        if(query.where){
-         message.roomname = JSON.parse(query.where).roomname;
-        }
-        message.friend = false;
-        message.objectId = id;
-        messages.results.push(message);
-        id++;
-      });
-    } //------ End POST request --------
-
-    //------- Begin GET request --------
-    else if (request.method === 'GET') {
-      console.log("GET received.")
-      statusCode = 200;
-
-      // If the where property exists, filter by roomname
-      // TODO: Handle the case if 'roomname' is not given in where
-      if(query.where){
-        var filteredMessages = _.filter(messages.results, function(message){
-            var f = JSON.parse(query.where);
-            if(message.roomname === f.roomname) {
-              return true;
-            }
-            return false;
-        });
-        // Set the object to return as a new object with the filtered results
-        retString = JSON.stringify({results: filteredMessages});
-        console.log('retString: ' + retString);
-      }
-      else{
-        retString = JSON.stringify(messages);
-      }
-    } //------ End GET request --------
-    // Handle the OPTIONS case when backbone sends it
-    else if(request.method === 'OPTIONS'){
-      statusCode = 201;
-    }
-  }
-
-  // See the note below about CORS headers.
   var headers = defaultCorsHeaders;
-
-  // Tell the client we are sending them plain text.
-  //
-  // You will need to change this if you are sending something
-  // other than plain text, like JSON or HTML.
   headers['Content-Type'] = "text/plain";
 
-  // .writeHead() writes to the request line and headers of the response,
-  // which includes the status and all headers.
-  response.writeHead(statusCode, headers);
+  // Parse the URL to get an object
+  var url_parts = url.parse(request.url, true);
+  var query = url_parts.query;
+  var mimeTypes = {
+    'js' : 'text/javascript',
+    'gif': 'image/gif',
+    'css': 'text/css',
+    'html': 'text/html'
+  };
 
-  // Make sure to always call response.end() - Node may not send
-  // anything back to the client until you do. The string you pass to
-  // response.end() will be the body of the response - i.e. what shows
-  // up in the browser.
-  //
-  // Calling .end "flushes" the response's internal buffer, forcing
-  // node to actually send all the data over to the client.
+  // Check the file extension
+  var reqUrlArr = request.url.split('.');
+  var fileType = reqUrlArr[reqUrlArr.length - 1]
+  //----- End Initialize Variables -----
 
-  response.end(retString);
+  //----- POST request -----
+  if(request.method === 'POST'){
+    // Assign a listener to handle POSTs asynchronously
+    request.addListener('data', function(data){
+      var message = JSON.parse(data.toString('utf-8'));
+      if(query.where){
+        message.roomname = JSON.parse(query.where).roomname;
+      }
+      message.friend = false;
+      message.objectId = id;
+      messages.results.unshift(message);
+      id++;
+    });
+
+    response.writeHead(201, headers);
+    response.end(retString);
+  } //----- End POST request -----
+
+  //----- GET request -----
+  if (request.method === 'GET') {
+    //----- Get messages -----
+    if(request.url.substr(0,8) === '/classes'){
+      // If the 'where' property exists, filter by roomname
+      // TODO: Handle the case if 'roomname' is not given in where
+      if(query.where){
+        var roomname = JSON.parse(query.where).roomname;
+        var filteredMessages = getMessagesByRoomname(messages.results, roomname);
+
+        // Set the object to return as a new object with the filtered results
+        retString = JSON.stringify({results: filteredMessages});
+      }
+      else {
+        // Otherwise, send all messages back
+        retString = JSON.stringify(messages);
+      }
+
+      response.writeHead(200, headers);
+      response.end(retString);
+    }//----- End get messages -----
+
+    //----- Serve files -----
+    else {
+      var pathToFile = __dirname + '/../client' + request.url;
+      fs.readFile(pathToFile, function(error, data){
+        if (error) {
+          response.writeHead(500);
+          response.end();
+        }
+        else {
+          response.writeHead(202, {'Content-Type' : mimeTypes[fileType]});
+          response.end(data);
+        }
+      });
+    } //----- End serve files -----
+
+  } //----- End GET request -----
+
+  //----- OPTIONS request -----
+  if(request.method === 'OPTIONS'){
+    response.writeHead(201, headers);
+    response.end(retString);
+  } //----- End OPTIONS request -----
 };
 
-// These headers will allow Cross-Origin Resource Sharing (CORS).
-// This code allows this server to talk to websites that
-// are on different domains, for instance, your chat client.
-//
-// Your chat client is running from a url like file://your/chat/client/index.html,
-// which is considered a different domain.
-//
-// Another way to get around this restriction is to serve you chat
-// client from this domain by setting up static file serving.
+/// Function: getMessagesByRoomname(collection, roomname)
+/// collection: The collection to filter
+/// roomname: The roomname to filter the collection on
+/// This helper function will return a collection of messages
+/// with a given roomname attribute
+var getMessagesByRoomname = function(collection, roomname){
+  var filteredMessages = _.filter(collection, function(message){
+      if(message.roomname === roomname) {
+        return true;
+      }
+      return false;
+  });
+  return filteredMessages;
+}
+
 var defaultCorsHeaders = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
