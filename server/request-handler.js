@@ -10,10 +10,18 @@ var messages = {
 };
 var id = 0; // Unique ID of a message
 
-/// Function requestHandler(request, response)
+// Read in the previous messages
+fs.readFileSync(__dirname+'/messages.txt').toString().split('\n').forEach(function (line) {
+  if(line){
+    messages.results.unshift(JSON.parse(line));
+    id++;
+  }
+});
+
+/// Function: requestHandler(request, response)
 /// request: A request message to handle
 /// response: A response message to send data back in
-/// This function will accept a request message to the server and handle it appropriately
+/// This function will accept a request message to the server and handle it appropriately.
 /// - GET :     If the message is a GET request, the server will determine if
 ///             it needs to serve files for the client or simply return messages
 /// - POST:     If the message is a POST request, the server will add the message
@@ -54,10 +62,18 @@ exports.requestHandler = function(request, response) {
       if(query.where){
         message.roomname = JSON.parse(query.where).roomname;
       }
-      message.friend = false;
+      message.friend = '';
       message.objectId = id;
       messages.results.unshift(message);
       id++;
+      // Append the new entry to our messages file and save
+      fs.appendFile(__dirname+'/messages.txt', JSON.stringify(message)+'\n', function(err) {
+          if(err) {
+              console.log(err);
+          } else {
+              console.log("The file was saved!");
+          }
+      });
     });
 
     response.writeHead(201, headers);
@@ -67,7 +83,7 @@ exports.requestHandler = function(request, response) {
   //----- GET request -----
   if (request.method === 'GET') {
     //----- Get messages -----
-    if(request.url.substr(0,8) === '/classes'){
+    if(request.url.substr(0,11) === '/chatterbox'){
       // If the 'where' property exists, filter by roomname
       // TODO: Handle the case if 'roomname' is not given in where
       if(query.where){
@@ -91,8 +107,8 @@ exports.requestHandler = function(request, response) {
       var pathToFile = __dirname + '/../client' + request.url;
       fs.readFile(pathToFile, function(error, data){
         if (error) {
-          response.writeHead(500);
-          response.end();
+          response.writeHead(404);
+          response.end('404 - File not found');
         }
         else {
           response.writeHead(202, {'Content-Type' : mimeTypes[fileType]});

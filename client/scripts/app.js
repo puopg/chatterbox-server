@@ -1,13 +1,13 @@
 // backbone implementation
 var Message = Backbone.Model.extend({
-  url : "http://127.0.0.1:3000/classes",
+  url : "http://127.0.0.1:3000/chatterbox",
   defaults : {username: '',
              text: ''}
 });
 
 var Messages = Backbone.Collection.extend({
   model : Message,
-  url : "http://127.0.0.1:3000/classes",
+  url : "http://127.0.0.1:3000/chatterbox",
   filter : {
     order:"-updatedAt"
   },
